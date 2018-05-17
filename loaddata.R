@@ -16,18 +16,15 @@ rwasplus_categorical <- rwasplus_categorical %>% mutate(id = seq(1:nrow(rwasplus
 rwasplus_final <- rwasplus_numeric %>% inner_join(x = rwasplus_numeric, y = rwasplus_categorical, by = 'id')
 
 # k-means with mixed categorical and numeric data
-daisy_dissim_matrix <- daisy(select(rwasplus_final, -46), metric = "gower")
-saveRDS(daisy_dissim_matrix, file = "./data/daisy_dissim_matrix.rdata")
+#gower_dissim_matrix <- daisy(select(rwasplus_final, -46), metric = "gower")
+gower_dissim_matrix <- daisy(rwasplus_final, metric = "gower")
+saveRDS(daisy_dissim_matrix, file = "./data/gower_dissim_matrix.rdata")
 
 # Load dissimilitude matrix
-gower_dissim_matrix <- readRDS(file = "./data/daisy_dissim_matrix.rdata")
-pam_medoids <- pam(x = gower_dissim_matrix, k = 4, diss = T)
+gower_dissim_matrix <- readRDS(file = "./data/gower_dissim_matrix.rdata")
+pam_medoids <- pam(x = gower_dissim_matrix, k = 3, diss = T)
 
 # plot IMPORTANT
-#fviz_dist(
+fviz_cluster(object = list(data = gower_dissim_matrix, cluster = 
+                             pam_medoids$clustering))
 
-# silhouette plot
-dissE <- daisy(rwas) 
-dE2   <- dissE^2
-sk2   <- silhouette(groups$cl, dE2)
-plot(sk2)
