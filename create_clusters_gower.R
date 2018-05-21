@@ -10,13 +10,13 @@ rwasplus_final <- readRDS(file = './data/rwasplus_final.rdata')
 gower_dissim_matrix <- daisy(rwasplus_final, metric = "gower", stand = T)
 
 # Save dissimilarity matrix
-saveRDS(daisy_dissim_matrix, file = "./data/gower_dissim_matrix.rdata")
+saveRDS(gower_dissim_matrix, file = "./data/gower_dissim_matrix.rdata")
 
 # Load dissimilitude matrix
 gower_dissim_matrix <- readRDS(file = "./data/gower_dissim_matrix.rdata")
 
 # Calculate medoids
-pam_medoids <- pam(x = gower_dissim_matrix, k = 3, diss = T)
+pam_medoids <- pam(x = gower_dissim_matrix, k = 10, diss = T)
 
 # plot dissimilarity matrix and groups around medoids
 fviz_cluster(object = list(data = gower_dissim_matrix, cluster = 

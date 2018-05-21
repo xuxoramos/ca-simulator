@@ -9,5 +9,8 @@ rwasplus_final <- readRDS(file = './data/rwasplus_final.rdata')
 gower_dissim_matrix <- readRDS(file = "./data/gower_dissim_matrix.rdata")
 
 # Create clusters
-clusters <- dbscan(gower_dissim_matrix, minPts = 4, eps = 5)
+clusters <- hdbscan(gower_dissim_matrix, minPts = 4)
+
+# Visualize clusters
+plot(clusters)
 
