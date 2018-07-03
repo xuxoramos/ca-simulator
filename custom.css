@@ -1,0 +1,38 @@
+#main .nav-pills > li.active > a,
+#main .nav-pills > li.active > a:hover,
+#main .nav-pills > li.active > a:focus {
+   background-color: #395584;
+}
+
+#main .nav-pills > li > a:hover {
+  background-color: #395584;
+}
+
+h1,h2,h3,h4,h5,h6,legend{
+    color: #395584;
+}
+
+#nav-top span.glyphicon {
+  color: #395584;
+}
+
+#table-of-contents header{
+    color:#395584;
+}
+
+#table-of-contents h2{
+    background-color:#395584;
+}
+
+#main a {
+    background-image: linear-gradient(180deg,#d64a70,#d64a70);
+    color:#c7254e;
+}
+
+a:hover{
+    color:#3d1308
+}
+
+a:visited{
+    color:#3d1308
+}

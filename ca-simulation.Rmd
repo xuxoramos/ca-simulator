@@ -1,7 +1,28 @@
 ---
-title: "Cambridge Analytica VS Democracia"
-output: rmdcss::html_splendor
+title: "Democracia Mexicana VS Cambridge Analytica"
+date: "`r Sys.Date()`"
+author: "Jesús Ramos / @xuxoramos / jesus[at]datank[dot]ai"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    css: custom.css
 ---
+
+```{r knitr_init, echo=FALSE, cache=FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=FALSE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+```
 
 ## ¿Qué pretendía hacer Cambridge Analytica en México?
 Como lo explicamos en [nuestro blog post](https://blog.datank.ai/the-problem-with-cambridge-analytica-is-not-the-privacy-breach-f5120eb59f25), la metodología de [Cambridge Analytica](https://en.wikipedia.org/wiki/Cambridge_Analytica) implica crear cámaras de eco para dividir al electorado en grupos, y transmitir mensajes específicos para estos grupos para moverlos a una acción determinada.
@@ -19,17 +40,15 @@ En este ejercicio vamos a mostrar cómo CA forma cámaras de eco, y cómo podemo
 
 CA tuvo acceso al [trabajo](https://4f46691c-a-dbcb5f65-s-sites.googlegroups.com/a/michalkosinski.com/michalkosinski/ml2014.pdf?attachauth=ANoY7codMeQX5AF-Ez9hjOyTQWpd3GH6So6gw6OutlBEhxCas7vN0ZTyIbwlzUxlYU9SUBKOcZrpe3alotTpAgXav-Ig_qoe1PR4xU8cAA8JpmSQqTUKXEP_MguNAicc99MkyOIBmTalZz8qM-inEnzUr6b3bX4CBGzG_3P5wVD8BRE5NCe3s9SweskAfS0O9qNpaP2nRTr3rV8lz0-uVpcBh4c1Rvu7nQ%3D%3D&attredirects=0) del Dr. Michal Kosinski, en el cual se basó CA para construir su negocio.
 
-### Enfoque de este trabajo
-
 Aunque el paper de Kosinski es libre, no tenemos el dataset que lo soporta, pero dado que conocemos que el flujo de trabajo, podemos reproducir la sección marcada con naranja, y éste será el enfoque de este trabajo.
 
 ![](https://i.imgur.com/JBw2szb.png)
 
-### Datos utilizados
+## Datos utilizados
 
-El dataset de *personality inventory* que usaremos es el de **16 Personality Factors** (16PF) del psicólogo británico Raymond Cattell, disponible en el sitio openpsychometrics.org (el test también está libre para tomarlo [aquí](https://openpsychometrics.org/tests/16PF.php)). 
+El dataset de *personality inventory* que usaremos es el de **16 Personality Factors** (16PF) del psicólogo británico Raymond Cattell, disponible en el sitio [openpsychometrics.org](https://openpsychometrics.org) (el test también está libre para tomarlo [aquí](https://openpsychometrics.org/tests/16PF.php)). 
 
-El dataset incluye 49,159 respuestas a 163 reactivos, rankeadas en [escala de Likert](https://www.simplypsychology.org/likert-scale.html). [El dataset puede descargarse aquí](https://openpsychometrics.org/_rawdata/), junto con otros inventarios y encuestas de personalidad.
+El dataset incluye 49,159 respuestas a 163 reactivos, rankeadas en [escala de Likert](https://www.simplypsychology.org/likert-scale.html). El dataset puede descargarse [aquí](https://openpsychometrics.org/_rawdata/), junto con otros inventarios y encuestas de personalidad.
 
 A continuación mostramos los primeros 10 de los 163 reactivos:
 ```{r loadlibs, echo=TRUE, message=FALSE, warning=FALSE}
@@ -44,7 +63,7 @@ pf16_questions <- read_delim('./data/16PF/codebook.csv', delim = ',')
 # Seleccionar primeros 10
 pf16_10_questions <- pf16_questions %>% filter(row_number() <= 10) %>% select(1,3)
 # Imprimirlos
-pf16_10_questions
+kable(pf16_10_questions)
 ```
 
 Como reactivos y respuestas se encuentran separados, debemos cargar los datos en otro archivo. Entre los reactivos se encuentran al final 6 que levantan algunos demográficos de los encuestados, como país de orígen, tiempo que se llevó contestar la encuesta, y otros, la cuales vamos a eliminar por no formar parte de la encuesta original y no contener información sobre la personalidad de los encuestados. Aquí las variables:
@@ -63,7 +82,7 @@ Finalmente, mostraremos los primeros 10 registros del archivo de datos con las r
 ```{r showdata, echo=TRUE, message=FALSE, warning=FALSE}
 # Eliminar columnas
 pf16_clean <- pf16 %>% dplyr::select(-one_of(cols_to_drop))
-filter(pf16_clean, row_number() <= 10)
+kable(filter(pf16_clean, row_number() <= 10))
 ```
 
 Como ven, las columnas están nombradas a como está identificada cada pregunta en el el dataset de reactivos.
@@ -77,24 +96,21 @@ La escala de Likert que mencionamos arriba es como sigue:
 4. De acuerdo
 5. Totalmente de acuerdo
 
-#### ¿Cómo hizo esto CA?
+Con esto estamos simulando como CA pasó de mensajes, posts y likes en FB, a inventarios de personalidad **para cada uno de los millones de registros** individuales de usuarios que tuvieron en su poder, para después tratar de formar grupos con estos **49,000 registros de 163 respuestas**.
 
-Con esto estamos simulando como CA pasó de mensajes, posts y likes en FB, a inventarios de personalidad **para cada uno de los millones de registros** individuales de usuarios que tuvieron en su poder.
+## Suposiciones
 
-### Creando grupos desde el inventario de personalidad
+Haremos las siguientes suposiciones. Favor de considerarlas en todo momento al leer este trabajo:
 
-Trataremos de formar grupos con estos 49,000 registros de 163 respuestas, con las siguientes suposiciones.
+1. **Usaremos distancia euclidiana:** aunque son respuestas de tipo categórico, existe una graduación de menor a mayor del 0 al 5. Probamos [la métrica de disimilitud de Gower](https://cran.r-project.org/web/packages/gower/vignettes/intro.html) como alternativa para variables categóricas, pero aunque este algoritmo nos permite dar pesos a cada variable, el grado de separación no difiere mucho de métricas más simples.
 
-#### Suposiciones
-1. **Usaremos distancia euclidiana:** aunque son respuestas de tipo categórico, si existe una graduación de menor a mayor del el 0 al 5. Probamos [la métrica de disimilitud de Gower](https://cran.r-project.org/web/packages/gower/vignettes/intro.html) como alternativa para variables categóricas, pero aunque este algoritmo nos permite mayor ajuste de pesos a cada variable, el grado de separación no difiere mucho de métricas euclidianas.
+2. **Agruparemos con el algoritmo de [K-means](https://en.wikipedia.org/wiki/K-means_clustering)** para buscar 4 grupos, correspondientes a [4 candidatos](https://en.wikipedia.org/wiki/Mexican_general_election,_2018) de la elección presidencial mexicana de 2018.
 
-2. **Agruparemos con el algoritmo de [K-means](https://en.wikipedia.org/wiki/K-means_clustering)** para buscar 4 grupos, correspondientes a [4 candidatos] de la elección presidencial mexicana de 2018, suponiendo que la estrategia de CA fuese de mover a cada grupo elector a cierta acción, donde solo quedara favorecido uno de ellos.
+3. Cada grupo identificado por K-means representa el electorado que apoya a uno de los 4 candidatos; una vez identificadas las características de cada grupo, se podrían crear [briefs de marketing político](https://www.hbs.edu/news/articles/Pages/chung-election-marketing.aspx) para ajustar mensajes, pautas, anuncios, memes, robo-llamadas, etc.
 
-3. Cada grupo identificado por K-means representa el electorado que apoya a uno de los 4 candidatos, y por tanto, una vez identificadas sus características, se podrían crear [marketing briefs]() para ajustar mensajes, pautas, anuncios, memes, robo-llamadas, etc.
+## ¿Qué segmentos/grupos vamos a buscar?
 
-#### Los grupos
-
-Para poder visualizar los clusters en 2 dimensiones (y no en 163, por lo difícil que es) proyectaremos el conjunto de datos en un plano de 2 dimensiones, que son los 2 componentes principales de explicación de varianza, obtenidos con [PCA](http://setosa.io/ev/principal-component-analysis/).
+Para poder visualizar los clusters en 2 dimensiones o variables (y no en 163 del dataset original) proyectaremos el conjunto de datos en un plano de 2 dimensiones, que son los 2 componentes principales de explicación de varianza, obtenidos con [PCA](http://setosa.io/ev/principal-component-analysis/).
 
 A continuación mostramos los grupos encontrados por el algoritmo:
 
@@ -123,26 +139,26 @@ kcca_clust <- kcca(pf16_clean,
 kcca_pca <- prcomp(pf16_clean)
 # Create plot
 clusters_plot <- flexclust::plot(kcca_clust, data=pf16_clean, project=kcca_pca)
-# Plot clusters
-clusters_plot
 ```
 
-Si observamos las conexiones entre los 4 grupos, podemos ver que hay uno que es más diferente que el resto, mientras que los otros se encuentran más cercanos entre ellos. Este grupo es candidato perfecto para ser bombardeado con mensajes que lo aislen aún más del resto, y aprovechar este aislamiento para que los usuarios (o en este caso, encuestados) nunca puedan ver los mensajes de otros grupos.
+Si observamos las conexiones entre los 4 grupos, vemos que hay uno que es más distante que el resto, mientras que los otros se encuentran más cercanos entre ellos. Este grupo es candidato perfecto para ser bombardeado con mensajes que lo aislen aún más, y aprovecharlo para que estos encuestados nunca puedan ver los mensajes de otros grupos.
 
-### ¿Cómo CA hace cámaras de eco con estos grupos?
-Posterior a afinar los grupos, e identificar las variables que las componen (recuerden que todavía hay que regresar de PCA a las 163 variables), CA *bautiza* los grupos con algún nombre representativo (por ejemplo, *'personas de clase media-baja con pretensiones derechistas'*) y pone a trabajar a su equipo de sociólogos y comunicólogos para relacionar sus características con algunos mensajes, que decantan en marketing briefs, que luego se ejecutan en forma de memes y fake news dirigidos y apuntados directamente no a modificar el pensamiento, de un grupo contrario, sino a mover a la acción a un grupo simpatizante. Cabe mencionar que este proceso de *bautizo* de grupos implica un ir y venir constante y tardado entre los analistas y científicos de datos en conjunto con la gente de negocio, antes de que se definan bien los grupos.
+## ¿Cómo logra CA hacer cámaras de eco con estos grupos?
+Después de obtener los grupos, CA *bautiza* los grupos con algún nombre representativo (por ejemplo, *'personas de clase media-baja con pretensiones derechistas'*) y pone a trabajar a su equipo de sociólogos y comunicólogos para descubrir sus características, para luego probar algunos mensajes y verificar su efectividad.
 
-## Combatiendo las cámaras de eco
+Finalmente se formulan marketing briefs que decantan en memes y fake news [hiperpersonalizados](https://www.huffingtonpost.com/entry/hyper-personalization-is-the-only-marketing-strategy_us_58852916e4b0d96b98c1dd80) y dirigidos a mover a dicho grupo a una acción de acuerdo a la estrategia.
 
-Tomemos ahora a un grupo de toda la muestra al azar. Como necesitamos saber exactamente quienes son (i.e. el índice en el cual se encuentran en todo el dataset), no podemos usar las funciones `sample`, así que lo haremos a la antigüita, con índices, obteniendo 49,000 muestras de una distribución uniforme, marcando con `TRUE` aquellas muestras mayores a `0.995`, y finalmente incluyendo estos índices del dataset original a la muestra.
+Cabe mencionar que este proceso de *bautizo* de grupos implica **numerosas interaciones** entre politólogos, sociólogos y analistas de datos antes de que se definan bien los grupos, sus características y los mensajes con los cuales abordarlos.
+
+## ¿Cómo combatimos las cámaras de eco?
+
+Tomemos ahora a una muestra al azar del dataset original. Lo haremos con índices, obteniendo 49,000 muestras de una distribución uniforme, marcando con `TRUE` aquellas muestras mayores a `0.998`, y finalmente relacionando estos índices a la muestra.
 
 Marcaremos las observaciones seleccionadas en negro.
 
 ```{r plotchart2, echo=TRUE, message=FALSE, warning=FALSE}
 # Crear plot
 clusters_plot <- flexclust::plot(kcca_clust, data=pf16_clean, project=kcca_pca)
-# Desplegar plot
-clusters_plot
 # Crear índices de manera aleatoria, con una distribución uniforme, probando que cada indicencia sea mayor a .995, y marcando cada ocurrencia como TRUE
 indices <- runif(nrow(pf16_clean)) > 0.998
 # Mostrar en negro las observaciones seleccionadas por los índices
@@ -151,26 +167,25 @@ points(kcca_pca$x[indices, 1], kcca_pca$x[indices, 2], pch=5)
 
 Ahora tomaremos estas observaciones, y modificaremos sus respuestas registradas originalmente en el cuestionario *16 Personality Factors*.
 
-### ¿Para qué haremos esto?
+### ¿Qué efecto estamos buscando?
+
 Como dijimos arriba, cuando CA recoge nuestros posts y likes de FB, los conecta con un inventario de personalidad para posteriormente *segmentarnos*. Al cambiar las respuestas de dicho inventario, estamos haciendo que nuestros posts, likes y follows de FB sean diferentes a lo que típicamente posteamos, y por tanto, nos salimos del *segmento* en el que CA nos ha ubicado.
 
-Es decir, si tenemos un perfil que, según la clasificación de CA instrumentada via FB, es liberal, y por tanto seguimos páginas, compartimos memes, y damos like a posts que cumplen con este criterio también, entonces si de repente seguimos páginas, damos like a posts y compartimos contenido que no cumple este criterio, entonces, literalmente, saldremos de dicha clasificación determinada por FB.
+Es decir, si tenemos un perfil *liberal*, según la clasificación de CA ejecutada via FB, y si seguimos páginas, compartimos memes, y damos like a posts que también cumplen con esta clasificación, y si súbitamente seguimos páginas, damos like a posts y compartimos contenido **que no cumple este criterio**, entonces, literalmente, estaremos saliendo de la clasificación *liberal*  determinada por FB.
 
-El efecto de salir de la cámara de eco sucede porque, al salirnos del segmento, logramos *confundir* a los algoritmos de FB, provocando que nos muestren noticias de otros segmentos diferentes, en un intento por reubicarnos en otro.
+El efecto de salir de la cámara de eco sucede porque logramos *confundir* a los algoritmos de FB cuando nos salimos del segmento, provocando que nos muestren noticias de segmentos diferentes, en un intento por reubicarnos en otro.
 
-## ¿Cómo lo haremos en este ejercicio?
+### ¿Cómo lo haremos en este ejercicio?
 
 Con el grupo seleccionado arriba (los puntos negros), simularemos un *cambio de personalidad* de los encuestados modificando sus respuestas al 16PF.
 
-Seleccionaremos el 50% de las 163 columnas de la muestra extraída arriba, y las llevaremos todas a la respuesta 1, que significa, en la escala de Likert mencionada al inicio, "en total desacuerdo". Es importante mencionar que entre más preguntas (o columnas) sean alteradas al mismo valor, más cerrado será este grupo, y menos disperso estará en el plano, dado que será completamente atípico que 104 individuos tengan todos la misma respuesta a preguntas totalmente desconectadas entre si.
+Seleccionaremos el 50% de las 163 columnas de la muestra extraída arriba, y las llevaremos todas a la respuesta 1, que significa "en total desacuerdo". Es importante mencionar que entre más preguntas (o columnas) sean alteradas al mismo valor, más cerrado será este grupo, y menos disperso estará en el plano, dado lo atípico que es que 104 individuos tengan la misma respuesta a preguntas desconectadas entre si.
 
-Después vamos a obtener su nuevo lugar en el plano bidimensional que construímos con PCA, dados estos *cambios de personalidad* simulados de las 104 observaciones seleccionadas.
+Después vamos a obtener su nuevo lugar en el plano bidimensional que construímos con PCA, que esperamos sea diferente a su lugar original por estos *cambios de personalidad* simulados.
 
 ```{r plotchart3, echo=TRUE, message=FALSE, warning=FALSE}
 # Crear nuevamente el plot
 clusters_plot <- flexclust::plot(kcca_clust, data=pf16_clean, project=kcca_pca)
-# Desplegar el plot
-clusters_plot
 # Copiar del dataset original solamente las observaciones marcadas por los índices ficticios
 new_obs <- pf16_clean[indices, ]
 # Crear también un vector de índices aleatorios representando las columnas
@@ -186,7 +201,7 @@ pca_new_obs <- predict(kcca_pca, new_obs)
 points(pca_new_obs[,1], pca_new_obs[,2], pch=5)
 ```
 
-Como podemos ver, el haber llevado el 50% de las preguntas a una respuesta *totalmente en desacuerdo* ha ayudado a este grupo de 104 personas, de varios segmentos, a salirse de las mayores concentraciones de los grupos 1, 2 y 4, y acercarse más al grupo 3, que es el más diferente al resto.
+Como podemos ver, el haber llevado el 50% de las preguntas a una respuesta *totalmente en desacuerdo* ha ayudado a este grupo de 104 personas de varios segmentos a salirse de las mayores concentraciones de los grupos 1, 2 y 4, y acercarse más al grupo 3, que es el más diferente al resto.
 
 No solo eso, sino que hay observaciones que originalmente estaban en un grupo, y cambiaron a otro, como se muestra a continuación:
 
@@ -201,7 +216,7 @@ old_clust <- kcca_clust@cluster[indices]
 summary_diff_clust <- tibble(antes_de_cambiar_personalidad = old_clust, 
                              despues_de_cambiar_personalidad=new_clust)
 # desplegamos las primeras 10 observaciones
-head(summary_diff_clust, 10)
+kable(head(summary_diff_clust, 10))
 ```
 
 Veamos qué sucede si llevamos esas mismas respuestas al valor 5, que significa 'totalmente de acuerdo'.
@@ -209,8 +224,6 @@ Veamos qué sucede si llevamos esas mismas respuestas al valor 5, que significa 
 ```{r plotchart5, echo=TRUE, message=FALSE, warning=FALSE}
 # Crear nuevamente el plot
 clusters_plot <- flexclust::plot(kcca_clust, data=pf16_clean, project=kcca_pca)
-# Desplegar el plot
-clusters_plot
 # De las columnas que representan reactivos del 16PF que fueron seleccionadas por los índices aleatorios de arriba, llevarlas todas a 1, simulando que todas esas columnas tuvieron una respuesta de "totalmente en desacuerdo"
 new_obs[,cols_to_change] <- 5
 # Obtener las nuevas posiciones de la muestra modificada por la línea anterior.
@@ -224,23 +237,32 @@ points(pca_new_obs[,1], pca_new_obs[,2], pch=5)
 
 Podemos ver que ahora el grupo se ha ido a otro extremo de la nube de datos en el plano. Efectivamente, mover las preferencias mueve nuestra pertenencia a otros grupos.
 
-
-## ¿Cómo interpreto este efecto?
+## ¿Cómo interpreto este efecto en mis redes sociales?
 
 El efecto, entonces, es en 2 partes:
-1. **Se reduce tu 'grado de pertenencia' a tu grupo  original**. Si imaginas que los grupos tienen un centro, y entre más cerca del centro, más perteneces a él, entonces alejarte del centro reduce este grado de pertenencia, y por tanto FB comenzará a mostrarte mensajes de otros grupos, para intentar ubicarte.
-2. **Cambias enteramente de grupo**. Esto es el efecto máximo, y se da cuando estás tan alejado del centro de tu grupo, que te acercas al centro de otro grupo, efectivamente cambiando tu pertenencia, con lo cual FB te mostrará contenido relacionado a ese nuevo grupo.
 
-Ambos abonan al objetivo de romper las cámaras de eco. Ambas te ayudarán a abrir tus redes sociales a nuevas ideas. No todas serán buenas, y segurito no estarás de acuerdo con muchas, dado que vienes de otro grupo con el cual si concordabas, pero este es el espíritu de este ejercicio, y de poco a poco romper las barreras que han aprovechado las empresas de mkting político para aislarnos y polarizarnos.
+1. **Se reduce tu 'grado de pertenencia' a tu grupo original**. Si imaginas que los grupos tienen un centro, y entre más cerca del centro, más perteneces a él, entonces alejarte del centro reduce este grado de pertenencia, y por tanto FB comenzará a mostrarte mensajes de otros grupos, para intentar ubicarte.
+2. **Cambias enteramente de grupo**. Esto es lo que buscamos, y se da cuando estás tan alejado del centro de tu grupo, que te acercas al centro de otro grupo diferente, efectivamente cambiando tu pertenencia, con lo cual FB te mostrará contenido relacionado a ese nuevo grupo.
 
-### Mi propia experiencia rompiendo cámaras de eco
-Yo soy de [Torreón, Coahuila](https://en.wikipedia.org/wiki/Torre%C3%B3n), pero en 2002 me vine a la CDMX. Tengo mucha familia allá. Como egresado del ITESM, en ese tiempo mi alineación era de centro-derecha. Pero la CDMX me mostró varias caras de México que no conocía, y poco a poco fui cambiando mis preferencias políticas, pero mis familiares no las ha cambiado del todo. Así, pues, en el terreno de las redes sociales observo que tengo un pié en un grupo, y otro pié en otro, y entonces, para estas elecciones, mis primas compartían memes, posts y contenido alineado a Ricardo Anaya, contenido que el algoritmo de FB, dadas las conexiones, determinaba que me era relevante. En contraste, mis amigos, con los que obviamente comparto características liberales, compartían contenido apoyando a AMLO, el cual FB también consideraba que me era relevante. Involuntariamente, rompí mi cámara de eco al mantener mis conexiones en redes sociales con mis familiares, y pude enterarme de las posiciones y sentimientos de ambos lados. Si este contenido hubiera sido menos inocuo, más virulento o más dañino, hubiera perdido todo su efecto gracias a la probabilidad de que se muestren mensajes contradictorios, al pertenecer a grupos opuestos.
+>Aquí es importante mencionar que casi todos los algoritmos de agrupación/clustering intentan partir todo el espacio de datos, así que **no habrá observaciones que pertenezcan a ningún cluster**, porque entonces habría un grupo de esos que [no pertenecen a ninguno](https://en.wikipedia.org/wiki/Set_(mathematics)).
+
+Ambos efectos abonan al objetivo de romper las cámaras de eco. Ambas te ayudarán a abrir tus redes sociales (y tu persona) a nuevas ideas. No todas serán de calidad, y seguro no estarás de acuerdo con muchas, dado que vienes de otro grupo con el cual si concordabas, pero este es el espíritu de este ejercicio, y de poco a poco romper las barreras que han aprovechado las empresas de mkting político para aislarnos y polarizarnos.
+
+## Mi propia experiencia rompiendo cámaras de eco
+Yo soy de [Torreón, Coahuila](https://en.wikipedia.org/wiki/Torre%C3%B3n), pero en 2002 me vine a la CDMX. Tengo mucha familia allá. Como egresado del ITESM, en ese tiempo mi alineación era de centro-derecha. Pero la CDMX me mostró varias caras de México que no conocía, y poco a poco fui cambiando mis preferencias políticas, pero algunos de mis familiares no las han cambiado del todo.
+
+Mi TL de FB me muestra entonces que tengo un pié en un grupo, y otro pié en otro, con mis primas compartiendo memes, posts y contenido alineado a Ricardo Anaya por un lado, y por otro, mis amigos compartían contenido apoyando a AMLO. FB me mostraba ambos por considerarlos relevantes para mi, los mensajes de mis primas por las conexiones, y los mensajes de mis amigos por el perfil liberal que compartimos.
+
+Involuntariamente, rompí mi cámara de eco al mantener mis conexiones en redes sociales con mis familiares, y pude enterarme de las posiciones y sentimientos de ambos lados. Si este contenido hubiera sido menos inocuo, más virulento o más dañino, hubiera perdido todo su efecto gracias a la probabilidad de que se muestren mensajes contradictorios, al pertenecer a grupos opuestos.
 
 ## Conclusiones
-Las 5 [dimensiones culturales de Hofstede](https://en.wikipedia.org/wiki/Hofstede%27s_cultural_dimensions_theory) son métricas de aspectos de cultura organizacional. Una de sus métricas es la ['distancia al poder'](http://www.clearlycultural.com/geert-hofstede-cultural-dimensions/power-distance-index/), que para México es alta (81/120). Las redes sociales nos permiten reducirla dramáticamente, además de darnos **agencia**, por primera vez en muchos años, sobre nuestra relación con procesos electorales y candidatos. No solo eso, sino que en el terreno de las redes sociales, el poder queda desconcentrado, y podemos activamente contrarrestar iniciativas que deseen manipular nuestra opinión, como lo deseaba hacer CA en su momento. Finalmente, las cámaras de eco buscan dividir y aislar, y este proceso erosiona las coincidencias y el *common ground* entre grupos políticos. Esto es peligroso porque las instituciones, y por tanto la democracia, funciona sobre coincidencias. El atentar contra ellas, sobre todo en una democracia con instituciones débiles como la nuestra, es moralmente cuestionable. Por tanto, abrir nuestras redes a otras ideas no solo es bueno para nosotros, sino para el país.
+Las 5 [dimensiones culturales de Hofstede](https://en.wikipedia.org/wiki/Hofstede%27s_cultural_dimensions_theory) son métricas de aspectos de cultura organizacional. Una de sus métricas es la ['distancia al poder'](http://www.clearlycultural.com/geert-hofstede-cultural-dimensions/power-distance-index/), que para México es alta (81/120). Las redes sociales nos permiten reducirla dramáticamente, además de darnos **agencia**, por primera vez en muchos años, sobre nuestra relación con procesos electorales y candidatos. No solo eso, sino que en el terreno de las redes sociales el poder queda desconcentrado, y podemos activamente contrarrestar iniciativas que deseen manipular nuestra opinión, como lo deseaba hacer CA en su momento.
+
+Finalmente, las cámaras de eco buscan dividir y aislar, y este proceso erosiona las coincidencias y el *common ground* entre grupos políticos. Esto es peligroso porque las instituciones, y por tanto la democracia, funciona sobre coincidencias. El atentar contra ellas, sobre todo en una democracia con instituciones débiles como la nuestra, es moralmente cuestionable. Por tanto, abrir nuestras redes a otras ideas no solo es bueno para nosotros, sino para el país.
 
 ## Créditos y agradecimientos
 Agradecemos a:
-- A [The Data Pub](https://facebook.com/thedatapub) por el espacio para presentar este proyecto.
-- A [Datank.ai](https://datank.ai) por los recursos otorgados para su ejecución.
-- A [SocialTIC](https://socialtic.org/), particularmente a Juanito Casanueva, por la difusión, revisiones, comentarios, y constante recordatorio de que este trabajo se mantenga aterrizado.
+
+- [The Data Pub](https://facebook.com/thedatapub) por el espacio para presentar este proyecto.
+- [Datank.ai](https://datank.ai) por los recursos otorgados para su ejecución.
+- [SocialTIC](https://socialtic.org/), particularmente a Juan M. Casanueva, por la difusión, revisiones, comentarios, y constante recordatorio de que este trabajo se mantenga aterrizado.
