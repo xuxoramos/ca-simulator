@@ -2149,7 +2149,7 @@ old_clust &lt;-<span class="st"> </span>kcca_clust<span class="op">@</span>clust
 summary_diff_clust &lt;-<span class="st"> </span><span class="kw">tibble</span>(<span class="dt">antes_de_cambiar_personalidad =</span> old_clust, 
                              <span class="dt">despues_de_cambiar_personalidad=</span>new_clust)
 <span class="co"># desplegamos las primeras 10 observaciones</span>
-<span class="kw">kable</span>(<span class="kw">head</span>(summary_diff_clust, <span class="dv">10</span>))</code></pre></div>
+<span class="kw">kable</span>(<span class="kw">head</span>(<span class="kw">filter</span>(summary_diff_clust, antes_de_cambiar_personalidad <span class="op">!=</span><span class="st"> </span>despues_de_cambiar_personalidad), <span class="dv">10</span>))</code></pre></div>
 <table>
 <thead>
 <tr class="header">
@@ -2159,44 +2159,44 @@ summary_diff_clust &lt;-<span class="st"> </span><span class="kw">tibble</span>(
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">1</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="right">1</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="right">1</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="right">4</td>
-<td align="right">4</td>
-</tr>
-<tr class="odd">
 <td align="right">4</td>
 <td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="right">4</td>
-<td align="right">4</td>
-</tr>
-<tr class="odd">
-<td align="right">1</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="right">1</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="right">2</td>
-<td align="right">2</td>
 </tr>
 <tr class="even">
 <td align="right">2</td>
 <td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">4</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="right">4</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="right">4</td>
+<td align="right">1</td>
 </tr>
 </tbody>
 </table>

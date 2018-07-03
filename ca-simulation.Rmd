@@ -216,7 +216,7 @@ old_clust <- kcca_clust@cluster[indices]
 summary_diff_clust <- tibble(antes_de_cambiar_personalidad = old_clust, 
                              despues_de_cambiar_personalidad=new_clust)
 # desplegamos las primeras 10 observaciones
-kable(head(summary_diff_clust, 10))
+kable(head(filter(summary_diff_clust, antes_de_cambiar_personalidad != despues_de_cambiar_personalidad), 10))
 ```
 
 Veamos qué sucede si llevamos esas mismas respuestas al valor 5, que significa 'totalmente de acuerdo'.
