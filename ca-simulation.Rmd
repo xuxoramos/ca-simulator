@@ -1,7 +1,7 @@
 ---
 title: "Democracia Mexicana VS Cambridge Analytica"
 date: "`r Sys.Date()`"
-author: "Jesús Ramos / @xuxoramos / jesus[at]datank[dot]ai"
+author: "Jesús Ramos / @xuxoramos / xuxoramos[at]aixsw[dot]mx"
 output:
   rmdformats::readthedown:
     highlight: kate
@@ -264,5 +264,5 @@ Finalmente, las cámaras de eco buscan dividir y aislar, y este proceso erosiona
 Agradecemos a:
 
 - [The Data Pub](https://facebook.com/thedatapub) por el espacio para presentar este proyecto.
-- [Datank.ai](https://datank.ai) por los recursos otorgados para su ejecución.
+- [AIXSW.mx](https://aixsw.mx) por los recursos otorgados para su ejecución.
 - [SocialTIC](https://socialtic.org/), particularmente a Juan M. Casanueva, por la difusión, revisiones, comentarios, y constante recordatorio de que este trabajo se mantenga aterrizado.
